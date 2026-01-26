@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirecting…</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      body {
+        font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Grande", "Lucida Sans", Arial, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #f4f8fb 0%, #e2eef7 60%, #cfe4f2 100%);
+        color: #0b1d2a;
+      }
+
+      .card {
+        background: #ffffff;
+        padding: 32px 36px;
+        border-radius: 18px;
+        box-shadow: 0 18px 50px rgba(12, 42, 67, 0.12);
+        max-width: 520px;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 26px;
+        margin: 0 0 12px;
+      }
+
+      p {
+        margin: 0;
+        font-size: 16px;
+        color: #30485c;
+      }
+
+      .error {
+        color: #9b2c2c;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Redirecting…</h1>
+      <p>Please wait while we open the form.</p>
+      <p class="error" id="error" hidden>Missing parameter. Please scan the QR code again.</p>
+    </div>
+
+    <script>
+      (function () {
+        var baseUrl =
+          "https://docs.google.com/forms/d/e/1FAIpQLSdBYMPPOq45WGXOtkZb9zOPtazDF6x13jxvyYOJasKVpNVg0w/viewform?usp=pp_url&entry.524121313=";
+        var params = new URLSearchParams(window.location.search);
+        var value = null;
+
+        if (params.toString() !== "") {
+          var first = params.entries().next().value;
+          if (first && first.length > 1) {
+            value = first[1];
+          }
+        }
+
+        if (!value) {
+          document.getElementById("error").hidden = false;
+          return;
+        }
+
+        var target = baseUrl + encodeURIComponent(value);
+        window.location.replace(target);
+      })();
+    </script>
+  </body>
+</html>
