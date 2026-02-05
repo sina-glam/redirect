@@ -55,23 +55,22 @@
     <script>
       (function () {
         var baseUrl =
-          "https://docs.google.com/forms/d/e/1FAIpQLSdBYMPPOq45WGXOtkZb9zOPtazDF6x13jxvyYOJasKVpNVg0w/viewform?usp=pp_url&entry.524121313=";
+          "https://docs.google.com/forms/d/e/1FAIpQLSe_FVaH0TiauDW2LpwrtDzakHuqUPw9tSE7WgiUT2f9zMJvgQ/viewform?usp=pp_url";
         var params = new URLSearchParams(window.location.search);
-        var value = null;
+        var item = params.get("item");
+        var amount = params.get("amount");
 
-        if (params.toString() !== "") {
-          var first = params.entries().next().value;
-          if (first && first.length > 1) {
-            value = first[1];
-          }
-        }
-
-        if (!value) {
+        if (!item || !amount) {
           document.getElementById("error").hidden = false;
           return;
         }
 
-        var target = baseUrl + encodeURIComponent(value);
+        var target =
+          baseUrl +
+          "&entry.1260856184=" +
+          encodeURIComponent(item) +
+          "&entry.478942317=" +
+          encodeURIComponent(amount);
         window.location.replace(target);
       })();
     </script>
