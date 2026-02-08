@@ -52,27 +52,82 @@
       <p class="error" id="error" hidden>Missing parameter. Please scan the QR code again.</p>
     </div>
 
-    <script>
-      (function () {
-        var baseUrl =
-          "https://docs.google.com/forms/d/e/1FAIpQLSe_FVaH0TiauDW2LpwrtDzakHuqUPw9tSE7WgiUT2f9zMJvgQ/viewform?usp=pp_url";
-        var params = new URLSearchParams(window.location.search);
-        var item = params.get("item");
-        var amount = params.get("amount");
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+      import {
+        doc,
+        getFirestore,
+        increment,
+        serverTimestamp,
+        setDoc,
+      } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-        if (!item || !amount) {
-          document.getElementById("error").hidden = false;
-          return;
-        }
+      const firebaseConfig = {
+        apiKey: "AIzaSyBMIkS7BHAVxoRMZ1DLl33eJDCvHmQV1i4",
+        authDomain: "qrcodecounter-donationuhs.firebaseapp.com",
+        projectId: "qrcodecounter-donationuhs",
+        storageBucket: "qrcodecounter-donationuhs.firebasestorage.app",
+        messagingSenderId: "331045631103",
+        appId: "1:331045631103:web:fb7a6d97e103aa81eb7b4a",
+        measurementId: "G-MG49TF1XS7",
+      };
 
-        var target =
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      function sanitizeItemId(value) {
+        return (value || "unknown_item")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .slice(0, 80) || "unknown_item";
+      }
+
+      const baseUrl =
+        "https://docs.google.com/forms/d/e/1FAIpQLSe_FVaH0TiauDW2LpwrtDzakHuqUPw9tSE7WgiUT2f9zMJvgQ/viewform?usp=pp_url";
+      const params = new URLSearchParams(window.location.search);
+      const item = params.get("item");
+      const amount = params.get("amount");
+
+      if (!item || !amount) {
+        document.getElementById("error").hidden = false;
+      } else {
+        const target =
           baseUrl +
           "&entry.1260856184=" +
           encodeURIComponent(item) +
           "&entry.478942317=" +
           encodeURIComponent(amount);
+
+        const itemId = sanitizeItemId(item);
+
+        try {
+          await Promise.all([
+            setDoc(
+              doc(db, "scan_summary", "global"),
+              {
+                totalScans: increment(1),
+                lastScanAt: serverTimestamp(),
+              },
+              { merge: true }
+            ),
+            setDoc(
+              doc(db, "scan_items", itemId),
+              {
+                itemName: item,
+                amount: amount,
+                totalScans: increment(1),
+                lastScanAt: serverTimestamp(),
+              },
+              { merge: true }
+            ),
+          ]);
+        } catch (err) {
+          console.error("Firestore scan tracking failed:", err);
+        }
+
         window.location.replace(target);
-      })();
+      }
     </script>
   </body>
 </html>
