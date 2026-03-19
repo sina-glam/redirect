@@ -146,7 +146,11 @@
           const data = snapshot.data();
           return {
             shortId,
-            item: typeof data.heading === "string" ? data.heading : "",
+            item: typeof data.description === "string" && data.description
+              ? data.description
+              : typeof data.heading === "string"
+                ? data.heading
+                : "",
             amount: typeof data.value === "string" ? data.value : "",
           };
         } catch (err) {
