@@ -52,10 +52,12 @@
       <p class="error" id="error" hidden>Missing parameter. Please scan the QR code again.</p>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
       import {
         doc,
+        getDoc,
         getFirestore,
         increment,
         serverTimestamp,
@@ -74,6 +76,7 @@
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
+      const donationItemsCollection = "donation_items";
 
       function sanitizeItemId(value) {
         return (value || "unknown_item")
@@ -83,11 +86,82 @@
           .slice(0, 80) || "unknown_item";
       }
 
+      function decodePayload(params) {
+        const shortId = (params.get("i") || "").trim().toLowerCase();
+        if (shortId) {
+          return {
+            shortId,
+            item: "",
+            amount: "",
+          };
+        }
+
+        const encodedPayload = params.get("d");
+        if (!encodedPayload) {
+          return {
+            shortId: "",
+            item: params.get("item"),
+            amount: params.get("amount"),
+          };
+        }
+
+        try {
+          let decodedJson = "";
+
+          if (typeof LZString !== "undefined" && typeof LZString.decompressFromEncodedURIComponent === "function") {
+            decodedJson = LZString.decompressFromEncodedURIComponent(encodedPayload) || "";
+          }
+
+          if (!decodedJson) {
+            decodedJson = decodeURIComponent(encodedPayload);
+          }
+
+          const parsed = JSON.parse(decodedJson);
+          return {
+            shortId: typeof parsed.id === "string" ? parsed.id.trim().toLowerCase() : "",
+            item: typeof parsed.i === "string" ? parsed.i : "",
+            amount: typeof parsed.a === "string" ? parsed.a : "",
+          };
+        } catch (err) {
+          console.error("Payload decode failed:", err);
+          return {
+            shortId: "",
+            item: "",
+            amount: "",
+          };
+        }
+      }
+
+      async function loadItemFromFirestore(shortId) {
+        if (!shortId) {
+          return null;
+        }
+
+        try {
+          const snapshot = await getDoc(doc(db, donationItemsCollection, shortId));
+          if (!snapshot.exists()) {
+            return null;
+          }
+
+          const data = snapshot.data();
+          return {
+            shortId,
+            item: typeof data.heading === "string" ? data.heading : "",
+            amount: typeof data.value === "string" ? data.value : "",
+          };
+        } catch (err) {
+          console.error("Firestore item lookup failed:", err);
+          return null;
+        }
+      }
+
       const baseUrl =
         "https://docs.google.com/forms/d/e/1FAIpQLSe_FVaH0TiauDW2LpwrtDzakHuqUPw9tSE7WgiUT2f9zMJvgQ/viewform?usp=pp_url";
       const params = new URLSearchParams(window.location.search);
-      const item = params.get("item");
-      const amount = params.get("amount");
+      const decoded = decodePayload(params);
+      const lookedUpItem = await loadItemFromFirestore(decoded.shortId);
+      const item = lookedUpItem?.item || decoded.item;
+      const amount = lookedUpItem?.amount || decoded.amount;
 
       if (!item || !amount) {
         document.getElementById("error").hidden = false;
@@ -99,7 +173,7 @@
           "&entry.478942317=" +
           encodeURIComponent(amount);
 
-        const itemId = sanitizeItemId(item);
+        const itemId = lookedUpItem?.shortId || decoded.shortId || sanitizeItemId(item);
 
         try {
           await Promise.all([
@@ -114,6 +188,7 @@
             setDoc(
               doc(db, "scan_items", itemId),
               {
+                shortId: itemId,
                 itemName: item,
                 amount: amount,
                 totalScans: increment(1),
